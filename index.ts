@@ -12,6 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Address } from "@ton/core";
 import { Pool } from 'pg';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
@@ -27,6 +28,24 @@ const recreatePayloadFrequency = 1000 * 60 * 10;
 
 const whitelistPath = path.join(__dirname, 'whitelist.json');
 const whitelist = JSON.parse(fs.readFileSync(whitelistPath, 'utf-8')).collections;
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 минут
+  max: 100, // Лимит для каждого IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Слишком много запросов, попробуйте позже',
+  skip: (req) => {
+    // Пропускаем лимит для health-check эндпоинтов
+    return req.path === '/health' || req.path === '/';
+  }
+});
+
+const strictLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 час
+  max: 10, // Строгий лимит для важных эндпоинтов
+  message: 'Слишком много запросов к защищенным эндпоинтам'
+});
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -72,7 +91,9 @@ async function validateApiKey(apiKey: string) {
   return { address: keyData.address, expires: new Date(keyData.expires_at) };
 }
 
-app.post('/ton-proof/generatePayload', (req, res) => {
+app.use(apiLimiter); // Базовый лимитер для всех API
+
+app.post('/ton-proof/generatePayload', strictLimiter, (req, res) => {
     const payload = generatePayload();
     db.payloads.push(payload);
 
@@ -83,7 +104,7 @@ app.post('/ton-proof/generatePayload', (req, res) => {
     res.json({payload});
 })
 
-app.post('/ton-proof/checkProof', async (req, res) => {
+app.post('/ton-proof/checkProof', strictLimiter, async (req, res) => {
     const tonProof = req.body as TonProof;
     const isValid = await checkProof(tonProof)
 
@@ -114,7 +135,7 @@ async function checkJWT(req: Request, res: Response, next: NextFunction) {
     })
 }
 
-app.post('/dapp/generateMusicApiKey', checkJWT, async (req, res) => {
+app.post('/dapp/generateMusicApiKey', strictLimiter, checkJWT, async (req, res) => {
     try {
         const userAddress = (req as unknown as { userAddress: string }).userAddress;
         
@@ -161,11 +182,11 @@ app.post('/api/validateMusicApiKey', async (req, res) => {
     }
 });
 
-app.get('/dapp/getAccountInfo', checkJWT, async (req, res) => {
+app.get('/dapp/getAccountInfo', strictLimiter, checkJWT, async (req, res) => {
     res.json({ address: (req as unknown as { userAddress: string }).userAddress });
 })
 
-app.get('/dapp/getNFTs', checkJWT, async (req, res) => {
+app.get('/dapp/getNFTs', strictLimiter, checkJWT, async (req, res) => {
     try {
         const userAddress = (req as unknown as { userAddress: string }).userAddress;
         const { network = 'mainnet', limit = 100, offset = 0 } = req.query;
