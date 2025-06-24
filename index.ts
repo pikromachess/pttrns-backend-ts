@@ -47,6 +47,12 @@ const strictLimiter = rateLimit({
   message: 'Слишком много запросов к защищенным эндпоинтам'
 });
 
+const keysLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 минут
+  max: 20, // Строгий лимит для важных эндпоинтов
+  message: 'Слишком много запросов к защищенным эндпоинтам'
+});
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -93,7 +99,7 @@ async function validateApiKey(apiKey: string) {
 
 app.use(apiLimiter); // Базовый лимитер для всех API
 
-app.post('/ton-proof/generatePayload', strictLimiter, (req, res) => {
+app.post('/ton-proof/generatePayload', keysLimiter, (req, res) => {
     const payload = generatePayload();
     db.payloads.push(payload);
 
@@ -135,7 +141,7 @@ async function checkJWT(req: Request, res: Response, next: NextFunction) {
     })
 }
 
-app.post('/dapp/generateMusicApiKey', strictLimiter, checkJWT, async (req, res) => {
+app.post('/dapp/generateMusicApiKey', keysLimiter, checkJWT, async (req, res) => {
     try {
         const userAddress = (req as unknown as { userAddress: string }).userAddress;
         
