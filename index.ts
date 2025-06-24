@@ -36,10 +36,30 @@ const pool = new Pool({
 });
 
 async function saveApiKey(apiKey: string, address: string, created: Date, expires: Date) {
-  await pool.query(
-    'INSERT INTO api_keys (key, address, created_at, expires_at) VALUES ($1, $2, $3, $4)',
-    [apiKey, address, created, expires]
-  );
+  const client = await pool.connect();
+  address = Address.parse(address).toString();
+  try {
+    await client.query('BEGIN');
+    
+    // Удаляем старые ключи пользователя (включая истёкшие)
+    await client.query(
+      'DELETE FROM api_keys WHERE address = $1 OR expires_at < NOW()',
+      [address]
+    );
+    
+    // Создаём новый ключ
+    await client.query(
+      'INSERT INTO api_keys (key, address, created_at, expires_at) VALUES ($1, $2, $3, $4)',
+      [apiKey, address, created, expires]
+    );
+    
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function validateApiKey(apiKey: string) {
