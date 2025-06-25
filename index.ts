@@ -1031,16 +1031,9 @@ async function initializeApp() {
   }
 }
 
-// Start server
-initializeApp().then(() => {
-    const port = process.env.PORT || 3000;
-    app.listen(port, () => {
-        console.log(`🌟 Сервер запущен на порту ${port}`);
-        console.log(`🔄 Автоматическая синхронизация активна (каждые 6 часов)`);
-        console.log(`📊 Whitelist содержит ${whitelist.length} коллекций`);
-        console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
-}).catch(error => {
-    console.error('💥 Критическая ошибка запуска приложения:', error);
-    process.exit(1);
+initializeApp().catch(error => {
+  console.error('💥 Критическая ошибка запуска приложения:', error);
+  process.exit(1);
 });
+
+export default app;

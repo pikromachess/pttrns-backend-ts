@@ -5,7 +5,7 @@
       "src": "index.ts",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["whitelist.json", "dist/**"]
+        "includeFiles": ["whitelist.json", "dist/**", "*.ts"]
       }
     }
   ],
