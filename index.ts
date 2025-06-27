@@ -1031,9 +1031,20 @@ async function initializeApp() {
   }
 }
 
-initializeApp().catch(error => {
-  console.error('💥 Критическая ошибка запуска приложения:', error);
-  process.exit(1);
-});
+const PORT = process.env.PORT || 3000;
+
+initializeApp()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Сервер запущен на порту ${PORT}`);
+      console.log(`📱 Frontend URL: ${frontendUrl}`);
+      console.log(`🎵 Music Backend URL: ${musicBackendUrl}`);
+      console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  })
+  .catch(error => {
+    console.error('💥 Критическая ошибка запуска приложения:', error);
+    process.exit(1);
+  });
 
 export default app;

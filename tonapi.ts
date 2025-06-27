@@ -7,7 +7,7 @@ const httpClient = new HttpClient({
     baseUrl: process.env.TON_API_BASE_URL || 'https://testnet.tonapi.io',
     baseApiParams: {
         headers: {
-            Authorization: `Bearer REDACTED`,
+            Authorization: `Bearer ${process.env.TON_API_KEY}`,
             'Content-type': 'application/json'
         }
     }
