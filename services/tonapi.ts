@@ -1,4 +1,4 @@
-import {Api, HttpClient} from "@ton-api/client";
+import { Api, HttpClient } from "@ton-api/client";
 import * as dotenv from 'dotenv';
 
 dotenv.config();

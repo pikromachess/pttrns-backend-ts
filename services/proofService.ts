@@ -1,8 +1,8 @@
-import {TonProof} from "./models";
-import {db} from "./payload";
+import { TonProof } from '../types/tonProof';
+import { db } from './payloadService';
 import * as crypto from 'crypto';
 import * as nacl from 'tweetnacl';
-import {tonapi} from "./tonapi";
+import { tonapi } from './tonapi';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -28,7 +28,6 @@ export async function checkProof(tonProof: TonProof): Promise<boolean> {
         if (response.address !== tonProof.address) {
             return false;
         }
-
 
         const tonProofPrefix = 'ton-proof-item-v2/';
         const tonConnectPrefix = 'ton-connect';
@@ -56,7 +55,6 @@ export async function checkProof(tonProof: TonProof): Promise<boolean> {
             payload
         ]);
 
-
         const msgHash = crypto.createHash('sha256').update(msg).digest();
         const finalMsg = Buffer.concat([
             Buffer.from([0xff, 0xff]),
@@ -72,4 +70,3 @@ export async function checkProof(tonProof: TonProof): Promise<boolean> {
         return false;
     }
 }
-

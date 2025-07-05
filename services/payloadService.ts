@@ -6,6 +6,5 @@ export const db: { payloads: string[] } = {
 
 export function generatePayload() {
     const buffer = Buffer.alloc(16);
-
     return crypto.getRandomValues(buffer).toString('hex');
 }
