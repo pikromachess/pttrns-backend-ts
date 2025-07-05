@@ -154,11 +154,6 @@ export function sessionRoutes(app: Express) {
         return res.status(400).json({ error: 'Неполные данные подписи' });
       }
 
-      // Проверяем наличие public_key и walletStateInit
-      if (!signData.public_key || !signData.walletStateInit) {
-        return res.status(400).json({ error: 'Отсутствуют public_key или walletStateInit' });
-      }
-
       // Проверяем тип payload
       if (signData.payload.type !== 'text' || !signData.payload.text) {
         return res.status(400).json({ error: 'Неверный тип данных подписи' });

@@ -39,7 +39,7 @@ export interface SignDataPayloadCell {
 
 export type SignDataPayload = SignDataPayloadText | SignDataPayloadBinary | SignDataPayloadCell;
 
-const allowedDomains = ["pikromachess-tma-patterns-47ab.twc1.net", "localhost:5173", "localhost:3000"];
+const allowedDomains = ["pikromachess-pttrns-frontend-dc0f.twc1.net", "localhost:5173", "localhost:3000"];
 const validAuthTime = 15 * 60; // 15 minutes
 
 export class SignDataService {
