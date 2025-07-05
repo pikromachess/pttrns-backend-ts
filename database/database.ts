@@ -139,7 +139,7 @@ async function createMonitoringTables(client: any) {
     )
   `);
 
-  // User blocks table
+  // User blocks table - исправляем UNIQUE constraint
   await client.query(`
     CREATE TABLE IF NOT EXISTS user_blocks (
       id SERIAL PRIMARY KEY,
@@ -148,9 +148,15 @@ async function createMonitoringTables(client: any) {
       blocked_until TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT NOW(),
       created_by VARCHAR(100) DEFAULT 'system',
-      is_active BOOLEAN DEFAULT TRUE,
-      UNIQUE(user_address, is_active) WHERE is_active = TRUE
+      is_active BOOLEAN DEFAULT TRUE
     )
+  `);
+
+  // Создаем уникальный частичный индекс отдельно
+  await client.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_user_blocks_active_unique 
+    ON user_blocks(user_address) 
+    WHERE is_active = TRUE
   `);
 }
 
