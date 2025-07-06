@@ -1,7 +1,5 @@
-// index.ts - Главный файл приложения
 import express from 'express';
 import cors from 'cors';
-import rateLimit from 'express-rate-limit';
 import * as dotenv from 'dotenv';
 import { initializeDatabase, pool } from './database/database';
 import { setupRoutes } from './routes/routes';
@@ -14,8 +12,35 @@ const app = express();
 
 // Настройка базовой конфигурации
 app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : false);
-app.use(cors());
-app.use(express.json());
+
+// ИСПРАВЛЕНО: Настройка CORS с правильными заголовками
+const corsOptions = {
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://pikromachess-pttrns-frontend-dc0f.twc1.net',
+    'https://pttrns-frontend.vercel.app'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin'
+  ],
+  exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
+  maxAge: 86400 // 24 hours
+};
+
+app.use(cors(corsOptions));
+
+// Дополнительная обработка preflight запросов
+app.options('*', cors(corsOptions));
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Настройка middleware
 setupMiddleware(app);
@@ -49,6 +74,10 @@ app.get('/', (req, res) => {
     name: 'NFT Music Backend',
     version: '1.0.0',
     status: 'running',
+    cors: {
+      enabled: true,
+      origins: corsOptions.origin
+    },
     endpoints: {
       public: [
         'GET /api/collections',
@@ -80,6 +109,29 @@ app.get('/', (req, res) => {
         'POST /admin/cleanup'
       ]
     }
+  });
+});
+
+// Глобальный обработчик ошибок
+app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('❌ Глобальная ошибка:', error);
+  
+  // Не показываем детали ошибки в продакшене
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  
+  res.status(error.status || 500).json({
+    error: 'Внутренняя ошибка сервера',
+    message: isDevelopment ? error.message : 'Что-то пошло не так',
+    ...(isDevelopment && { stack: error.stack })
+  });
+});
+
+// 404 обработчик
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Эндпоинт не найден',
+    path: req.originalUrl,
+    method: req.method
   });
 });
 
@@ -118,6 +170,7 @@ initializeApp()
       console.log(`📱 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
       console.log(`🎵 Music Backend URL: ${process.env.MUSIC_BACKEND_URL || 'http://localhost:8000'}`);
       console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔗 CORS Origins:`, corsOptions.origin);
     });
   })
   .catch(error => {
