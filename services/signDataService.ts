@@ -10,15 +10,15 @@ import { Buffer } from "buffer";
 import nacl from "tweetnacl";
 import crc32 from "crc-32";
 
-// Интерфейсы для sign-data
+// Обновленный интерфейс без обязательных public_key и walletStateInit
 export interface CheckSignDataRequestDto {
   signature: string;
   address: string;
   timestamp: number;
   domain: string;
   payload: SignDataPayload;
-  public_key: string;
-  walletStateInit: string;
+  public_key?: string;  // Делаем опциональным
+  walletStateInit?: string;  // Делаем опциональным
 }
 
 export interface SignDataPayloadText {
@@ -84,7 +84,7 @@ export class SignDataService {
       const parsedAddr = Address.parse(address);
       console.log('✅ Адрес распарсен:', parsedAddr.toString());
 
-      // Get public key from wallet
+      // Get public key from wallet - это основной источник публичного ключа
       let publicKey = await getWalletPublicKey(address);
       if (!publicKey) {
         console.warn('❌ Не удалось получить публичный ключ для адреса:', address);

@@ -110,18 +110,16 @@ async function getWalletPublicKey(address: string): Promise<Buffer | null> {
   }
 }
 
-// Интерфейсы
+
 interface SignDataRequest {
   signature: string;
   address: string;
   timestamp: number;
   domain: string;
   payload: {
-    type: 'text';  // Исправляем: используем литеральный тип
+    type: 'text';
     text: string;
-  };
-  public_key: string;
-  walletStateInit: string;
+  };  
 }
 
 interface NftListenRequest {
@@ -146,7 +144,9 @@ export function sessionRoutes(app: Express) {
       console.log('🔐 Получен запрос на создание сессии:', {
         address: signData.address,
         domain: signData.domain,
-        timestamp: signData.timestamp
+        timestamp: signData.timestamp,
+        hasSignature: !!signData.signature,
+        hasPayload: !!signData.payload
       });
 
       // Проверяем базовые параметры
@@ -197,21 +197,17 @@ export function sessionRoutes(app: Express) {
       // Верифицируем подпись
       console.log('🔍 Проверяем подпись сообщения...');
       
-      // Исправляем: приводим payload к правильному типу
-      const signDataPayload = {
-        type: 'text' as const,
-        text: signData.payload.text
-      };
-      
+      // Используем обновленную функцию проверки подписи без public_key и walletStateInit
       const isValidSignature = await signDataService.checkSignData({
         signature: signData.signature,
         address: normalizedAddress,
         timestamp: signData.timestamp,
         domain: signData.domain,
-        payload: signDataPayload,
-        public_key: signData.public_key,
-        walletStateInit: signData.walletStateInit
-      }, getWalletPublicKey); // Теперь функция определена
+        payload: signData.payload,
+        // Убираем поля, которых нет в официальном API
+        public_key: '', // Будет получен автоматически в signDataService
+        walletStateInit: '' // Будет получен автоматически в signDataService
+      }, getWalletPublicKey);
 
       if (!isValidSignature) {
         console.warn('❌ Неверная подпись сообщения');
@@ -220,13 +216,26 @@ export function sessionRoutes(app: Express) {
 
       console.log('✅ Подпись верифицирована успешно');
 
-      // Создаем новую сессию
-      const sessionId = jwt.sign({
+      // Создаем новую сессию с правильной структурой JWT
+      const sessionPayload = {
         address: normalizedAddress,
         domain: signData.domain,
         timestamp: signData.timestamp,
-        type: 'listening_session'
-      }, backendSecret);
+        type: 'listening_session', // ВАЖНО: этот тип должен быть в токене
+        // Добавляем exp для автоматической проверки истечения JWT
+        exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 час
+        iat: Math.floor(Date.now() / 1000)
+      };
+
+      const sessionId = jwt.sign(sessionPayload, backendSecret);
+
+      console.log('🔑 Создан JWT токен с payload:', {
+        address: normalizedAddress,
+        type: 'listening_session',
+        exp: sessionPayload.exp,
+        iat: sessionPayload.iat,
+        tokenPreview: sessionId.slice(0, 50) + '...'
+      });
 
       const currentTime = new Date();
       const expiresAt = new Date(currentTime.getTime() + 60 * 60 * 1000); // 1 час
@@ -254,6 +263,7 @@ export function sessionRoutes(app: Express) {
           currentTime, 
           expiresAt
         ]);
+        console.log('✅ Сессия сохранена в БД');
       } catch (dbError) {
         console.error('⚠️ Ошибка сохранения сессии в БД:', dbError);
         // Продолжаем работу, так как основная логика не зависит от БД
@@ -262,7 +272,8 @@ export function sessionRoutes(app: Express) {
       console.log('✅ Сессия создана:', {
         sessionId: sessionId.slice(0, 20) + '...',
         userAddress: normalizedAddress,
-        expiresAt: expiresAt.toISOString()
+        expiresAt: expiresAt.toISOString(),
+        musicServerUrl: musicBackendUrl
       });
 
       res.json({
