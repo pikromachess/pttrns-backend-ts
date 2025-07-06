@@ -197,14 +197,12 @@ export function sessionRoutes(app: Express) {
       // Верифицируем подпись
       console.log('🔍 Проверяем подпись сообщения...');
       
-      // Используем обновленную функцию проверки подписи без public_key и walletStateInit
       const isValidSignature = await signDataService.checkSignData({
         signature: signData.signature,
         address: normalizedAddress,
         timestamp: signData.timestamp,
         domain: signData.domain,
         payload: signData.payload,
-        // Убираем поля, которых нет в официальном API
         public_key: '', // Будет получен автоматически в signDataService
         walletStateInit: '' // Будет получен автоматически в signDataService
       }, getWalletPublicKey);
@@ -216,15 +214,17 @@ export function sessionRoutes(app: Express) {
 
       console.log('✅ Подпись верифицирована успешно');
 
-      // Создаем новую сессию с правильной структурой JWT
+      // ИСПРАВЛЕННОЕ создание JWT токена с правильными временными метками
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      const expirationTimestamp = currentTimestamp + (60 * 60); // 1 час
+      
       const sessionPayload = {
         address: normalizedAddress,
         domain: signData.domain,
-        timestamp: signData.timestamp,
-        type: 'listening_session', // ВАЖНО: этот тип должен быть в токене
-        // Добавляем exp для автоматической проверки истечения JWT
-        exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 час
-        iat: Math.floor(Date.now() / 1000)
+        timestamp: signData.timestamp, // Оригинальная временная метка подписи
+        type: 'listening_session',
+        exp: expirationTimestamp, // ВАЖНО: правильное время истечения
+        iat: currentTimestamp // Время создания токена
       };
 
       const sessionId = jwt.sign(sessionPayload, backendSecret);
@@ -232,13 +232,14 @@ export function sessionRoutes(app: Express) {
       console.log('🔑 Создан JWT токен с payload:', {
         address: normalizedAddress,
         type: 'listening_session',
-        exp: sessionPayload.exp,
-        iat: sessionPayload.iat,
+        exp: expirationTimestamp,
+        expirationDate: new Date(expirationTimestamp * 1000).toISOString(),
+        iat: currentTimestamp,
         tokenPreview: sessionId.slice(0, 50) + '...'
       });
 
       const currentTime = new Date();
-      const expiresAt = new Date(currentTime.getTime() + 60 * 60 * 1000); // 1 час
+      const expiresAt = new Date(expirationTimestamp * 1000); // Правильное преобразование
 
       const sessionData: SessionData = {
         sessionId,
